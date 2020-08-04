@@ -1,0 +1,9 @@
+python "print '----------- start -----------'";
+python "import sys";
+python "import subprocess";
+python "parms = sys.argv[3:]";
+python "sys.path.append(r'C:/Spider1.0/startup/maya')";
+python "import transmitFileUVBackStage";
+python "reload(transmitFileUVBackStage)";
+python "transmitFileUVBackStage.main(parms)";
+python "print '-----------  end  -----------'";
