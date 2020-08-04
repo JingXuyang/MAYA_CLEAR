@@ -1,0 +1,105 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// SCRIPT:		jrLightLinksCleanUp.mel
+// VERSION:		1.0
+// AUTHOR:		James Roy
+//				JamesRoy@126.com
+// UPDATE:		2006-3-8 10:05
+//
+// DESCRIPTION:	This handy script removes all the redundant lightlinks in the current scene.
+//
+// MAIN PROC:	jrLightLinksCleanUp()
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc jrLightLinksCleanUp()
+{
+	float $startTime = `timerX`;
+	float $elaspedTime;
+   	int $min;
+   	int $sec;
+
+	string $lightLinker[] = `ls -typ lightLinker`;
+
+	int $numOfLinker = size($lightLinker);
+	int $numOfbadLinks = 0;
+	int $numOfAllLinks = 0;
+	string $linkedPair[] = {};
+	print "\njrLightLinksCleanUp:\n";
+	print "-------------------------------\n";
+	for ($i=0; $i<size($lightLinker); $i++) {
+		progressWindow -title  ("Checking '" + $lightLinker[$i] + "' (" + ($i+1) + "/" + $numOfLinker + ") ...") -isInterruptable  1 -status  ("查询LightLink中, 请等待... ");
+		if ( `progressWindow -query -isCancelled` ) break;
+
+		string $connections[] = `listConnections -c 1 -p 1 -d 0 -s 1 $lightLinker[$i]`;
+		string $tmpPair = "";
+		int $numOfcons = size($connections);
+
+		if (!$numOfcons) {
+			print ("- Cleaning Up '" + $lightLinker[$i] + "': 没有多余的灯光连接被找到!\n");
+			progressWindow -ep;
+			continue;
+		}
+		else {
+			print ("- Cleaning Up '" + $lightLinker[$i] + "', All "  + ($numOfcons/2) + " Connections\n");
+		}
+
+		int $progress = 0;
+		int $percentage = 0;
+		progressWindow -e -t ("'" + $lightLinker[$i] + "' (" + ($i+1) + "/" + $numOfLinker + ")" + ", " + ($numOfcons/2) + " Connections...") -pr $progress -ii 1 -min 0 -max $numOfcons;
+
+		int $j = 0;
+		while ($j<$numOfcons) {
+			if ( `progressWindow -query -isCancelled` ) {
+				warning "用户放弃了!\n";
+				break;
+			}
+
+			$numOfAllLinks ++;
+
+			$progress = $j;
+			$percentage = $progress * 100 / $numOfcons;
+			progressWindow -e -pr $progress -st ("Processing LightLinks (" + $percentage + "%) ... ");
+
+			string $LinkIgnoreLit = match("(link){0,1}(ignore){0,1}\\[[0-9]+\\]", $connections[$j]);
+			string $LinkIgnoreObj = match("(link){0,1}(ignore){0,1}\\[[0-9]+\\]", $connections[$j+2]);
+			if ($LinkIgnoreLit == $LinkIgnoreObj) {
+//				if (size(match("(\\.light){0,1}(\\.lightIgnored){0,1}$", $LinkIgnoreLit))) {
+					$tmpPair = $connections[$j+1] + ":" + $connections[$j+3];
+//				}
+//				else {
+//					$tmpPair = $connections[$j+3] + ":" + $connections[$j+1];
+//				}
+
+				if (stringArrayCount($tmpPair, $linkedPair)) {
+					disconnectAttr $connections[$j+1] $connections[$j];
+					disconnectAttr $connections[$j+3] $connections[$j+2];
+					$numOfbadLinks ++;
+				}
+				else {
+					$linkedPair[size($linkedPair)] = $connections[$j+1] + ":" + $connections[$j+3];
+				}
+
+				$j += 4;
+			}
+			else {
+				disconnectAttr $connections[$j+1] $connections[$j];
+				$numOfbadLinks ++;
+				$j += 2;
+			}
+
+		}
+
+		progressWindow -ep;
+	}
+
+	$elaspedTime = `timerX -st $startTime`;
+	$min = $elaspedTime/60;
+	$sec = $elaspedTime%60;
+	print "\njrLightLinksCleanUp摘要:\n";
+	print "-------------------------------\n";
+	print ("- 删除了总共 " + $numOfbadLinks + " 个多余无用的连接 " + $numOfAllLinks + " 灯光连接. (共耗时: " + $min + " 分钟, " + $sec + " 秒)\n");
+
+}
+jrLightLinksCleanUp;
+// end of script
